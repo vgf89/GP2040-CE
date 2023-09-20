@@ -13,6 +13,8 @@
 #define ANALOG_CENTER 0.5f // 0.5f is center
 #define ANALOG_MAX 1.0f    // 1.0f is max
 
+uint16_t AnalogInput::adc_last_val[] = { 0, 0, 0, 0 };
+
 bool AnalogInput::available() {
     return Storage::getInstance().getAddonOptions().analogOptions.enabled;
 }
@@ -150,8 +152,24 @@ void AnalogInput::process()
 }
 
 float AnalogInput::readPin(int pin, uint16_t center, bool autoCalibrate) {
-	adc_select_input(pin - 26);
-	uint16_t adc_hold = adc_read();
+    int adcinput = pin - 26;
+	adc_select_input(adcinput);
+
+    // Simple IIR Filter
+    // TODO: Make SAMPLES and RATIO configurable in WebUI
+    uint16_t adc_hold = 0;
+    uint16_t SAMPLES = 30;
+    double RATIO = 0.6;
+    if (adcinput < 4 && adcinput >= 0) {
+        uint16_t previous_value = adc_last_val[adcinput];
+        uint32_t adc_sum = 0;
+        for (int i = 0; i < SAMPLES; i++) {
+            adc_sum += adc_read();
+        }
+        uint16_t adc_average = adc_sum / SAMPLES;
+        adc_hold = (RATIO * previous_value) + (1.0 - RATIO) * adc_average;
+        adc_last_val[adcinput] = adc_hold;
+    }
 
 	// Calibrate axis based on off-center
 	uint16_t adc_calibrated;
