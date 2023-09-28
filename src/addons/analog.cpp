@@ -40,19 +40,19 @@ void AnalogInput::setup() {
 	if (analogOptions.auto_calibrate) {
 		if ( isValidPin(analogOptions.analogAdc1PinX) ) {
 			adc_select_input(analogOptions.analogAdc1PinX-26); // ANALOG1-X
-			adc_1_x_center = adc_read();
+			adc_1_x_center = averaged_adc_read(100);
 		}
 		if ( isValidPin(analogOptions.analogAdc1PinY) ) {
 			adc_select_input(analogOptions.analogAdc1PinY-26); // ANALOG1-Y
-			adc_1_y_center = adc_read();
+			adc_1_y_center = averaged_adc_read(100);
 		}
 		if ( isValidPin(analogOptions.analogAdc2PinX) ) {
 			adc_select_input(analogOptions.analogAdc2PinX-26); // ANALOG2-X
-			adc_2_x_center = adc_read();
+			adc_2_x_center = averaged_adc_read(100);
 		}
 		if ( isValidPin(analogOptions.analogAdc2PinY) ) {
 			adc_select_input(analogOptions.analogAdc2PinY-26); // ANALOG2-Y
-			adc_2_y_center = adc_read();
+			adc_2_y_center = averaged_adc_read(100);
 		}
 	}
 }
@@ -162,11 +162,7 @@ float AnalogInput::readPin(int pin, uint16_t center, bool autoCalibrate) {
     double RATIO = 0.6;
     if (adcinput < 4 && adcinput >= 0) {
         uint16_t previous_value = adc_last_val[adcinput];
-        uint32_t adc_sum = 0;
-        for (int i = 0; i < SAMPLES; i++) {
-            adc_sum += adc_read();
-        }
-        uint16_t adc_average = adc_sum / SAMPLES;
+        uint16_t adc_average = averaged_adc_read(SAMPLES);
         adc_hold = (RATIO * previous_value) + (1.0 - RATIO) * adc_average;
         adc_last_val[adcinput] = adc_hold;
     }
@@ -218,4 +214,12 @@ void AnalogInput::adjustCircularity(float& x, float& y, float deadzone, float x_
         x = ((x_magnitude / magnitude) * ANALOG_CENTER + ANALOG_CENTER);
         y = ((y_magnitude / magnitude) * ANALOG_CENTER + ANALOG_CENTER);
     }
+}
+
+uint16_t AnalogInput::averaged_adc_read(uint32_t samples) {
+    uint32_t adc_sum = 0;
+    for (int i = 0; i < samples; i++) {
+        adc_sum += adc_read();
+    }
+    return adc_sum / samples;
 }
